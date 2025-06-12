@@ -42,7 +42,7 @@ Orders at each price level are stored in a `deque` to preserve insertion order (
 
 ---
 
-### 2.3 `MatchingEngine`
+### 1.3 `MatchingEngine`
 
 Encapsulates the logic for matching incoming orders with existing ones in the order book using price-time priority.
 
@@ -60,7 +60,7 @@ Encapsulates the logic for matching incoming orders with existing ones in the or
 
 --- 
 
-### 2.4 `TradeLog`
+### 1.4 `TradeLog`
 
 `TradeLog` serves as a persistent, append-only record of all operations performed on the order book — including order additions, cancellations, and matches.
 
@@ -83,7 +83,7 @@ Encapsulates the logic for matching incoming orders with existing ones in the or
 
 ---
 
-### ✅ 2.5 `OrderBookSerializer` 
+### ✅ 1.5 `OrderBookSerializer` 
 
 `OrderBookSerializer` (also known as the Snapshot Manager) is responsible for capturing the complete state of the system at specific points in time.
 
@@ -103,9 +103,10 @@ Encapsulates the logic for matching incoming orders with existing ones in the or
 - Append-only event log (`TradeLog`) for fine-grained replayability
 - Periodic or user-triggered snapshot (`OrderBookSerializer`) for fast startup and recovery
 
-## 3. Flow of Operations
+---
+## 2. Flow of Operations
 
-### 3.1 Submitting a New Order
+### 2.1 Submitting a New Order
 
 1. A user issues a command to place a new buy or sell order.
 2. The order is validated and converted into an internal format.
@@ -114,7 +115,7 @@ Encapsulates the logic for matching incoming orders with existing ones in the or
 
 ---
 
-### 3.2 Matching Orders
+### 2.2 Matching Orders
 
 5. Matching is performed automatically when a new order is added.
 6. The system compares the new order against existing orders on the opposite side of the book.
@@ -125,14 +126,14 @@ Encapsulates the logic for matching incoming orders with existing ones in the or
 
 ---
 
-### 3.3 Recording Events
+### 2.3 Recording Events
 
 8. Each state-changing operation — order placement, cancellation, or match — is logged.
 9. A structured log entry is appended to a persistent event log for traceability and recovery.
 
 ---
 
-### 3.4 Saving a Snapshot
+### 2.4 Saving a Snapshot
 
 10. The system may save a full snapshot of its state either:
     - Manually (via user command)
@@ -141,31 +142,96 @@ Encapsulates the logic for matching incoming orders with existing ones in the or
 
 ---
 
-### 3.5 Querying the Book
+### 2.5 Querying the Book
 
 12. Users may request to view the order book at any time.
 13. The system responds with the current buy and sell levels, optionally sorted and summarized.
 
 ---
 
-### 3.6 Canceling Orders
+### 2.6 Canceling Orders
 
 14. A user may cancel a previously placed order using its unique identifier.
 15. If the order is still active, it is removed from the book and the cancellation is logged.
 
 ---
 
-### 3.7 Exiting and Recovery
+### 2.7 Exiting and Recovery
 
 16. On system shutdown, a final snapshot may be written to disk.
 17. Upon restarting:
+    - The system restores from the most recent snapshot
+    - It replays any remaining operations from the event log to reach the latest state
+
+---
+
+### 2.8 State Diagram
+
+![State Diagram](uml/state%20diagram.png)
+
+---
+
+# 3. Persistence Model
+
+This section describes how the system ensures data durability, recoverability, and fault tolerance using a dual-layered persistence strategy: an append-only event log and periodic snapshots.
+
+### 3.1 Overview
+
+The system persists state in two complementary ways:
+- **TradeLog**: A real-time, append-only log of all events (add, match, cancel) for auditability and replay.
+- **OrderBookSerializer**: A snapshotting component that saves the complete in-memory state of the system periodically or on demand.
+
+Together, they enable fast recovery after shutdown or crash, without requiring a full replay of the entire history.
+
+---
+
+### 3.2 Trade Log (Event Journal)
+
+- Every state-changing event (order added, matched, canceled) is immediately written to the TradeLog.
+- The log is stored in a structured, human-readable format such as JSON Lines (JSONL) or CSV.
+- This log allows the system to reconstruct every operation in sequence, providing full replayability.
+
+---
+
+### 3.3 Snapshots (OrderBookSerializer)
+
+- Snapshots are created manually (via CLI) or automatically (after every N operations, e.g., every 10).
+- A snapshot captures:
+    - The full state of the OrderBook (active buy and sell orders)
+    - A reference to the TradeLog's position at the time of snapshot (e.g., op count or file offset)
+
+Snapshots offer a fast-loading restore point, so the system doesn't need to replay the entire event log from the beginning.
+
+---
+
+### 3.4 Recovery Workflow
+
+On restart:
+1. The system loads the most recent snapshot of the OrderBook.
+2. It then replays all events in the TradeLog that occurred *after* the snapshot point.
+3. This ensures full state reconstruction up to the most recent operation.
+
+This model is inspired by event-sourced and journaling systems used in production databases and trading engines.
+
+---
+
+### 3.5 Benefits
+
+| Feature                | TradeLog                | Snapshot                  |
+|------------------------|-------------------------|---------------------------|
+| **Granularity**        | Fine-grained (1 event)  | Coarse (full state)       |
+| **Speed of Load**      | Slow                    | Fast                      |
+| **Disk Usage**         | Linear growth           | Constant size (or rotated)|
+| **Recovery**           | Replay from snapshot    | Load snapshot + replay log|
+
+By combining both mechanisms, the system balances performance, reliability, and traceability.
 
 
-## 6. Design Principles Applied
+## 4. Design Principles Applied
 
 This project is built with long-term maintainability, extensibility, and correctness in mind. The following key software design principles are actively applied:
 
-### 6.1 SOLID Principles
+### 4.1 SOLID Principles
 
 - **Single Responsibility Principle (SRP):**  
   Each class has a focused, well-defined purpose:
@@ -188,7 +254,7 @@ This project is built with long-term maintainability, extensibility, and correct
 
 ---
 
-### 6.2 C++-Specific Principles
+### 4.2 C++-Specific Principles
 
 - **RAII (Resource Acquisition Is Initialization):**  
   Memory and file management are wrapped in RAII-safe classes (`std::vector`, `std::ofstream`, `smart pointers`), ensuring deterministic cleanup.
@@ -204,7 +270,7 @@ This project is built with long-term maintainability, extensibility, and correct
 
 ---
 
-### 6.3 Architectural Design Patterns
+### 4.3 Architectural Design Patterns
 
 - **Composition over Inheritance:**  
   Components like `OrderBook`, `TradeLog`, and `MatchingEngine` are composed, not subclassed, for better encapsulation.
@@ -215,4 +281,15 @@ This project is built with long-term maintainability, extensibility, and correct
 - **Snapshot + Event Log Model:**  
   Combines fast snapshot-based recovery with fine-grained TradeLog replayability, inspired by event sourcing architectures in distributed systems.
 
+# 5. Future Work
+
+This project is designed with extensibility in mind. Potential enhancements include:
+
+- Support for market and stop-loss orders
+- Customizable matching strategies (e.g., pro-rata, FIFO overrides)
+- Multithreaded order book engine
+- Real-time data feed integration
+- HTTP/REST API for remote interaction
+- Interactive TUI or GUI interface for order monitoring
+- Persistent storage via a database backend (e.g., SQLite or PostgreSQL)
 
