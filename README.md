@@ -4,9 +4,7 @@ A C++ project for implementing a order book
 ## Documentation
 
 ### Requirements Document
-![Requiremnts](doc/requiremnts.mb)
+[Requirements Document](doc/requirements.md)
 
 ### Design Document
-
-![Design](doc/design.md)
-
+[Design Document](doc/design.md)
