@@ -281,7 +281,38 @@ This project is built with long-term maintainability, extensibility, and correct
 - **Snapshot + Event Log Model:**  
   Combines fast snapshot-based recovery with fine-grained TradeLog replayability, inspired by event sourcing architectures in distributed systems.
 
-# 5. Future Work
+---
+
+## 5. Design Choices
+
+The following design choices were deliberately made to balance simplicity, maintainability, and extensibility:
+
+### 5.1 Use of Interfaces and Factory Pattern
+- **Rationale:** Interfaces (`IOrder`, `OrderBookObserver`) ensure flexibility, allowing for future enhancements such as different types of orders (market, stop-loss) or observers (analytics, notifications).
+- **Factory Pattern:** `OrderFactory` was used to centralize and encapsulate order creation logic, ensuring consistent validation, ID generation, and timestamping.
+
+### 5.2 Observer Pattern
+- **Rationale:** Implementing the observer pattern with `OrderBookObserver` allows for loose coupling between `OrderBook` and its observers (`TradeLog`, `OrderBookSerializer`). This supports easy addition of new observers and improves system modularity.
+
+### 5.3 Composition and Aggregation
+- **Composition:** `OrderBook` has strong ownership of `Orders` and `MatchingEngine`, clearly defining lifecycle management.
+- **Aggregation:** CLI aggregates (uses but does not own) the `OrderBook` and `OrderBookSerializer`, allowing clear separation between user interaction logic and domain logic.
+
+### 5.4 Persistence Strategy
+- **Snapshot and Log:** A dual persistence strategy combining an append-only event log (`TradeLog`) and periodic state snapshots (`OrderBookSerializer`) was chosen to balance performance, recovery speed, and auditability. This design ensures quick recovery after crashes without sacrificing detailed event tracking.
+
+### 5.5 Simplicity and Modularity
+- The design avoids over-engineering by choosing straightforward, easily testable designs (such as limiting inheritance, using clear aggregation, and employing simple DTOs like `Trade`).
+
+These decisions collectively support the project’s stated goals of clarity, extensibility, maintainability, and robust recovery capabilities.
+
+### 5.6 Class Diagram
+
+![Class Diagram](uml/ClassDiagram.drawio.png)
+
+---
+
+# 6. Future Work
 
 This project is designed with extensibility in mind. Potential enhancements include:
 
