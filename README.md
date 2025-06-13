@@ -1,9 +1,12 @@
 # Modular-Limit-Order-Book-Engine-in-Modern-C-
 A C++ project for implementing a order book
+---
+## Documentation
 
-## Use Case Overview
+### Requirements Document
+![Requiremnts](doc/requiremnts.mb)
 
-This use case diagram models the key interactions between the `Trader` and the internal logic of the Order Book System.
-[V1OrderBookUsecaseDiagram.pdf](https://github.com/user-attachments/files/20690091/V1OrderBookUsecaseDiagram.pdf)
+### Design Document
 
+![Design](doc/design.md)
 
