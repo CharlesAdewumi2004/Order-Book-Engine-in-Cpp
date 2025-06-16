@@ -8,3 +8,6 @@ A C++ project for implementing a order book
 
 ### Design Document
 [Design Document](docs/desgin.md)
+
+
+![Build](https://github.com/your-username/your-repo/actions/workflows/your-workflow.yml/badge.svg)
