@@ -4,7 +4,7 @@
 
 // This replicates the function from main.cpp
 int add(int a, int b) {
-    return a - b;
+    return a + b;
 }
 
 TEST_CASE("Addition works", "[add]") {
