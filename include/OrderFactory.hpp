@@ -7,5 +7,5 @@ class OrderFactory {
         inline static int id = 0;
     public:
         OrderFactory() = delete;
-        static std::shared_ptr<LimitOrder> createLimitOrder(int quantity, int price, OrderType orderType);
+        static std::shared_ptr<IOrder> createLimitOrder(int quantity, int price, OrderType orderType);
 };
