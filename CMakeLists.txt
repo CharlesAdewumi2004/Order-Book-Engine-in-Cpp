@@ -40,6 +40,7 @@ enable_testing()
 add_executable(unit_tests
         test/test_main.cpp
         test/test_order.cpp
+        test/test_order_factory.cpp
 )
 
 target_link_libraries(unit_tests
