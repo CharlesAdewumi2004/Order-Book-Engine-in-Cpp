@@ -21,6 +21,7 @@ FetchContent_MakeAvailable(Catch2)
 # Build core library
 add_library(orderbook STATIC
         src/LimitOrder.cpp
+        src/OrderFactory.cpp
 )
 
 target_include_directories(orderbook PUBLIC include)
