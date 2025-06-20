@@ -42,4 +42,4 @@ Run tests via ctest
 Fail the workflow if any test fails or the build breaks
 
 ### GitHub Actions Workflow File
-You can find the configuration in .github/workflows/ci.yml
+You can find the configuration in [WorkFlow](.github/workflows/ci.yml)
