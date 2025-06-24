@@ -9,7 +9,8 @@
 #include <memory>
 #include <algorithm>
 
-/// A stateless matching engine that works with *any* map<double, deque<…>>.
+/// A stateless matching engine that works with any std::map<double, std::deque<…>>.
+/// The map’s comparator dictates price priority (ascending for sell, descending for buy).
 class MatchingEngine {
 public:
     template<typename MapT>
@@ -28,28 +29,30 @@ public:
                 ? (incomingOrder->getPrice() >= priceLevel)
                 : (incomingOrder->getPrice() <= priceLevel);
 
-            if (!priceMatch) break;
+            if (!priceMatch)
+                break;
 
             auto& queue = it->second;
             while (!queue.empty() && remainingQty > 0) {
                 auto resting = queue.front();
                 int matchQty = std::min(remainingQty, resting->getQuantity());
 
-                // Record trade with correct buy/sell order positions
+                // Build trade with correct buy/sell order positions:
                 if (incomingOrder->getOrderType() == OrderType::BUY) {
                     trades.emplace_back(incomingOrder, resting, matchQty);
                 } else {
                     trades.emplace_back(resting, incomingOrder, matchQty);
                 }
 
+                // Subtract matched quantity
                 resting->reduceQuantity(matchQty);
-                incomingOrder->reduceQuantity(matchQty);
                 remainingQty -= matchQty;
 
                 if (resting->getQuantity() == 0)
                     queue.pop_front();
             }
 
+            // Remove empty price level
             if (queue.empty())
                 it = opposingOrders.erase(it);
             else
