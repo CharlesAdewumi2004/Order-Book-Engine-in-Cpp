@@ -73,7 +73,7 @@ If you’d like to add matching strategies, alternate order types, or new serial
 
 ---
 
-## 🧪 Testing
+##  Testing
 
 To run unit tests locally:
 
