@@ -22,6 +22,8 @@ FetchContent_MakeAvailable(Catch2)
 add_library(orderbook STATIC
         src/LimitOrder.cpp
         src/OrderFactory.cpp
+        src/MatchingEngine.cpp
+        src/Trade.cpp
 )
 
 target_include_directories(orderbook PUBLIC include)
@@ -41,6 +43,7 @@ add_executable(unit_tests
         test/test_main.cpp
         test/test_order.cpp
         test/test_order_factory.cpp
+        test/test_match_engine.cpp
 )
 
 target_link_libraries(unit_tests

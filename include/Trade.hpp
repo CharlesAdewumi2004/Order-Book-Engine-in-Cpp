@@ -7,12 +7,14 @@ class Trade {
 private:
     inline static int nextId;
     int id;
+    int matchQty;
     std::shared_ptr<IOrder> buyOrder;
     std::shared_ptr<IOrder> sellOrder;
     std::chrono::system_clock::time_point executionTime;
 
+
 public:
-    Trade(std::shared_ptr<IOrder> buy, std::shared_ptr<IOrder> sell);
+    Trade(std::shared_ptr<IOrder> buy, std::shared_ptr<IOrder> sell, int matchQty);
 
     int getTradeId() const;
     std::shared_ptr<IOrder> getBuyOrder() const;

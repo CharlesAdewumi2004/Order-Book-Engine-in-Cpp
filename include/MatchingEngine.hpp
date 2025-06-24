@@ -8,8 +8,6 @@
 
 class MatchingEngine {
 public:
-    MatchingEngine() = default;
-
     static std::vector<Trade> match(
         std::shared_ptr<IOrder> incomingOrder,
         std::map<double, std::deque<std::shared_ptr<IOrder>>>& opposingOrders
