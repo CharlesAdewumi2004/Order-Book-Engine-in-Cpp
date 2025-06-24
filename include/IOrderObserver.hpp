@@ -1,8 +1,14 @@
+// IOrderObserver.hpp
 #pragma once
 
-class IOrderObserver{
-    public:
-        virtual void onAddOrder() = 0;
-        virtual void onRemoveOrder() = 0;
-        virtual void onMatchOrder() = 0;
+#include <memory>
+#include "IOrder.hpp"
+#include "OrderEventType.hpp"
+
+class IOrderObserver {
+public:
+    virtual void onOrderEvent(OrderEventType event,
+                              const std::shared_ptr<IOrder>& order) = 0;
+
+    virtual ~IOrderObserver() = default;
 };

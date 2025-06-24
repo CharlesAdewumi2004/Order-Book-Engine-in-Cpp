@@ -1,23 +1,38 @@
 #pragma once
-#include "OrderFactory.hpp"
-#include "IOrderObserver.hpp"
-#include <deque>
 #include <map>
+#include <deque>
+#include <vector>
+#include <memory>
+#include <algorithm>
+
+#include "IOrder.hpp"
+#include "IOrderObserver.hpp"
+#include "Trade.hpp"
 #include "MatchingEngine.hpp"
+#include "OrderEventType.hpp"
 
-class OrderBook{
-    private:
+class OrderBook {
+private:
+    // two different map types: ascending for sell, descending for buy
+    std::map<double, std::deque<std::shared_ptr<IOrder>>>                   sellOrders;
+    std::map<double, std::deque<std::shared_ptr<IOrder>>, std::greater<>>   buyOrders;
+    std::vector<std::shared_ptr<IOrderObserver>>                             observers;
 
-        std::map<double, std::deque<std::shared_ptr<IOrder>>> sellOrders;
-        std::map<double, std::deque<std::shared_ptr<IOrder>>, std::greater<>> buyOrders;
-        std::vector<std::shared_ptr<IOrderObserver>> observers;
-    public:
-        OrderBook() = default;
-        ~OrderBook() = default;
-        void addObserver(const std::shared_ptr<IOrderObserver>& observer);
-        bool addOrder(const std::shared_ptr<IOrder>& order);
-        void notifyObservers();
-        bool addOrder(std::shared_ptr<IOrder> order);
-        bool removeOrder(std::shared_ptr<IOrder> order);
-        void matchingEngine();
+    // helper to broadcast a specific event and order to all observers
+    void notifyObservers(OrderEventType event, const std::shared_ptr<IOrder>& order);
+
+public:
+    OrderBook() = default;
+    ~OrderBook() = default;
+
+    // Observer management
+    void addObserver   (const std::shared_ptr<IOrderObserver>& observer);
+    void removeObserver(const std::shared_ptr<IOrderObserver>& observer);
+
+    // Core operations
+    void addOrder   (const std::shared_ptr<IOrder>& order);
+    void removeOrder(const std::shared_ptr<IOrder>& order);
+
+    // Runs matching for a just‐added order against the opposite book
+    void matchingEngine(const std::shared_ptr<IOrder>& incomingOrder);
 };
