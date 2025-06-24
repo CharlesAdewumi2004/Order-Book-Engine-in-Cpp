@@ -1,6 +1,6 @@
 #pragma once
 #include "IOrder.hpp"
-#include "Transaction.hpp"
+#include "Trade.hpp"
 #include <map>
 #include <deque>
 #include <memory>
@@ -10,7 +10,7 @@ class MatchingEngine {
 public:
     MatchingEngine() = default;
 
-    static std::vector<Transaction> match(
+    static std::vector<Trade> match(
         std::shared_ptr<IOrder> incomingOrder,
         std::map<double, std::deque<std::shared_ptr<IOrder>>>& opposingOrders
     );

@@ -3,7 +3,7 @@
 #include <chrono>
 #include <memory>
 
-class Transaction {
+class Trade {
 private:
     inline static int nextId;
     int id;
@@ -12,9 +12,9 @@ private:
     std::chrono::system_clock::time_point executionTime;
 
 public:
-    Transaction(std::shared_ptr<IOrder> buy, std::shared_ptr<IOrder> sell);
+    Trade(std::shared_ptr<IOrder> buy, std::shared_ptr<IOrder> sell);
 
-    int getTransactionId() const;
+    int getTradeId() const;
     std::shared_ptr<IOrder> getBuyOrder() const;
     std::shared_ptr<IOrder> getSellOrder() const;
     std::chrono::system_clock::time_point getExecutionTime() const;
