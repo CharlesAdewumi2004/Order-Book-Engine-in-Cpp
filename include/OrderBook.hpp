@@ -15,5 +15,8 @@ class OrderBook{
         ~OrderBook() = default;
         void addObserver(IOrderObserver);
         void removeObserver(IOrderObserver);
+        void notifyObservers();
+        bool addOrder(IOrder);
+        bool removeOrder(IOrder);
         void matchingEngine();
 }
