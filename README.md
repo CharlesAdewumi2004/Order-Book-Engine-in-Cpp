@@ -5,7 +5,7 @@ This project simulates core functionalities of a financial trading system, inclu
 
 ---
 
-## 🔧 Features
+##  Features
 
 - Modular Architecture – Designed around SOLID principles and C++ best practices
 -  Matching Engine – Price-time priority matching with support for partial fills
