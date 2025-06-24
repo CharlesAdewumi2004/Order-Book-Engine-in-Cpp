@@ -12,7 +12,7 @@ OrderType LimitOrder::getType() const { return type; }
 double LimitOrder::getPrice() const { return price; }
 int LimitOrder::getQuantity() const { return quantity; }
 std::chrono::system_clock::time_point LimitOrder::getTimestamp() const { return timestamp; }
-
+OrderType LimitOrder::getOrderType() const { return type; }
 void LimitOrder::reduceQuantity(int amount) {
     if (amount > 0 && amount <= quantity) {
         quantity -= amount;

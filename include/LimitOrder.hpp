@@ -20,6 +20,7 @@ public:
     OrderType getType() const override;
     double getPrice() const override;
     int getQuantity() const override;
+    OrderType getOrderType() const override;
     std::chrono::system_clock::time_point getTimestamp() const override;
 
     void reduceQuantity(int amount) override;
