@@ -10,7 +10,7 @@ class MatchingEngine {
 public:
     MatchingEngine() = default;
 
-    std::vector<Transaction> match(
+    static std::vector<Transaction> match(
         std::shared_ptr<IOrder> incomingOrder,
         std::map<double, std::deque<std::shared_ptr<IOrder>>>& opposingOrders
     );

@@ -3,10 +3,11 @@
 #include "IOrderObserver.hpp"
 #include <deque>
 #include <map>
+#include "MatchingEngine.hpp"
 
 class OrderBook{
     private:
-        //matchingengine class
+
         std::map<double, std::deque<std::shared_ptr<IOrder>>> sellOrders;
         std::map<double, std::deque<std::shared_ptr<IOrder>>, std::greater<>> buyOrders;
         std::vector<std::shared_ptr<IOrderObserver>> observers;
