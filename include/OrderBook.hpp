@@ -7,16 +7,16 @@
 class OrderBook{
     private:
         //matchingengine class
-        std::vector<IOrderObserver> observers;
-        std::map<double, std::deque<IOrder>> sellOrders;
-        std::map<double, std::deque<IOrder>, std::greater<>> buyOrders;
+        std::map<double, std::deque<std::shared_ptr<IOrder>>> sellOrders;
+        std::map<double, std::deque<std::shared_ptr<IOrder>>, std::greater<>> buyOrders;
+        std::vector<std::shared_ptr<IOrderObserver>> observers;
     public:
         OrderBook() = default;
         ~OrderBook() = default;
-        void addObserver(IOrderObserver);
-        void removeObserver(IOrderObserver);
+        void addObserver(const std::shared_ptr<IOrderObserver>& observer);
+        bool addOrder(const std::shared_ptr<IOrder>& order);
         void notifyObservers();
-        bool addOrder(IOrder);
-        bool removeOrder(IOrder);
+        bool addOrder(std::shared_ptr<IOrder> order);
+        bool removeOrder(std::shared_ptr<IOrder> order);
         void matchingEngine();
-}
+};
