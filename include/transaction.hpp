@@ -5,7 +5,8 @@
 
 class Transaction {
 private:
-    inline static int transactionID;
+    inline static int nextId;
+    int id;
     std::shared_ptr<IOrder> buyOrder;
     std::shared_ptr<IOrder> sellOrder;
     std::chrono::system_clock::time_point executionTime;
