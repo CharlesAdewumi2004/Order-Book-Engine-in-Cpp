@@ -1,9 +1,10 @@
 #pragma once
 #include "Interfaces/IOrder.hpp"
+#include "Interfaces/IEvent.hpp"
 #include <chrono>
 #include <memory>
 
-class TradeEvent {
+class TradeEvent final :  IEvent{
 private:
     inline static int nextId;
     int id;
@@ -16,8 +17,8 @@ private:
 public:
     TradeEvent(std::shared_ptr<IOrder> buy, std::shared_ptr<IOrder> sell, int matchQty);
 
-    int getTradeId() const;
+    int getId() const override;
     std::shared_ptr<IOrder> getBuyOrder() const;
     std::shared_ptr<IOrder> getSellOrder() const;
-    std::chrono::system_clock::time_point getExecutionTime() const;
+    std::chrono::system_clock::time_point getExecutionTime() const override;
 };
