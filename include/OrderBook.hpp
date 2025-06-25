@@ -5,8 +5,8 @@
 #include <memory>
 #include <algorithm>
 
-#include "IOrder.hpp"
-#include "IOrderObserver.hpp"
+#include "Interfaces/IOrder.hpp"
+#include "Interfaces/IOrderObserver.hpp"
 #include "Trade.hpp"
 #include "MatchingEngine.hpp"
 #include "OrderEventType.hpp"
