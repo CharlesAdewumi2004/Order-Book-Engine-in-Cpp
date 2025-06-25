@@ -3,7 +3,7 @@
 #include <chrono>
 #include <memory>
 
-class Trade {
+class TradeEvent {
 private:
     inline static int nextId;
     int id;
@@ -14,7 +14,7 @@ private:
 
 
 public:
-    Trade(std::shared_ptr<IOrder> buy, std::shared_ptr<IOrder> sell, int matchQty);
+    TradeEvent(std::shared_ptr<IOrder> buy, std::shared_ptr<IOrder> sell, int matchQty);
 
     int getTradeId() const;
     std::shared_ptr<IOrder> getBuyOrder() const;

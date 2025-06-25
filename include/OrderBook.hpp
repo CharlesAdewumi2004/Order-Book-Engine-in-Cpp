@@ -7,7 +7,7 @@
 
 #include "Interfaces/IOrder.hpp"
 #include "Interfaces/IOrderObserver.hpp"
-#include "Trade.hpp"
+#include "Events/TradeEvent.hpp"
 #include "MatchingEngine.hpp"
 #include "OrderEventType.hpp"
 

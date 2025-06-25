@@ -2,7 +2,7 @@
 #pragma once
 
 #include "Interfaces//IOrder.hpp"
-#include "Trade.hpp"
+#include "Events//TradeEvent.hpp"
 #include <map>
 #include <deque>
 #include <vector>
@@ -12,9 +12,9 @@
 class MatchingEngine {
 public:
     template<typename MapT>
-    static std::vector<Trade> match(const std::shared_ptr<IOrder>& incomingOrder,MapT& opposingOrders
+    static std::vector<TradeEvent> match(const std::shared_ptr<IOrder>& incomingOrder,MapT& opposingOrders
     ) {
-        std::vector<Trade> trades;
+        std::vector<TradeEvent> trades;
         int remainingQty = incomingOrder->getQuantity();
 
         for (auto it = opposingOrders.begin();
