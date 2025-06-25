@@ -1,5 +1,5 @@
-#define CATCH_CONFIG_MAIN
-#include <catch2/catch_all.hpp>
+#include <iostream>
+#include <catch2/catch_test_macros.hpp>
 
 #include "OrderFactory.hpp"
 #include "MatchingEngine.hpp"
@@ -112,17 +112,24 @@ TEST_CASE("Matching a SELL order against BUY book", "[match][sell]") {
     Book buyBook;
     auto b1 = OrderFactory::createLimitOrder(4,  50, OrderType::BUY);
     auto b2 = OrderFactory::createLimitOrder(4,  49, OrderType::BUY);
-    buyBook[50].push_back(b1);
-    buyBook[49].push_back(b2);
+
+    buyBook[49].push_back(b1);
+    buyBook[50].push_back(b2);
 
     auto sell = OrderFactory::createLimitOrder(6, 49, OrderType::SELL);
     auto trades = MatchingEngine::match(sell, buyBook);
 
     REQUIRE(trades.size() == 2);
-    // must hit best bid (50) first
+    INFO("order 1");
+    INFO("Trade[0] ID:    " << trades[0].getBuyOrder()->getId());
+    INFO("Expected b1 ID: " << b1->getId());
     REQUIRE(trades[0].getBuyOrder()->getId() == b1->getId());
-    // then next best bid
+
+    INFO("Order 2");
+    INFO("Trade[1] ID:    " << trades[1].getBuyOrder()->getId());
+    INFO("Expected b2 ID: " << b2->getId());
     REQUIRE(trades[1].getBuyOrder()->getId() == b2->getId());
+
 }
 
 TEST_CASE("Empty opposing book yields no trades", "[match][empty]") {

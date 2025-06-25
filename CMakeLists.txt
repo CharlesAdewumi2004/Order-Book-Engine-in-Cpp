@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
-project(OrderBookEngine CXX)
+project(OrderBookEngine LANGUAGES CXX)
 
-# Use C++20
+# C++ Standard
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -14,16 +14,20 @@ FetchContent_Declare(
         GIT_REPOSITORY https://github.com/catchorg/Catch2.git
         GIT_TAG v3.5.2
 )
-
 FetchContent_MakeAvailable(Catch2)
 
 # ---------------------------------------------------------
-# Build core library
+# Include directories
+include_directories(include)
+
+# ---------------------------------------------------------
+# Core library
 add_library(orderbook STATIC
         src/LimitOrder.cpp
         src/OrderFactory.cpp
         src/Trade.cpp
         src/OrderBook.cpp
+        #src/MatchingEngine.cpp
 )
 
 target_include_directories(orderbook PUBLIC include)
@@ -33,6 +37,7 @@ target_include_directories(orderbook PUBLIC include)
 add_executable(orderbook_cli
         src/main.cpp
 )
+
 target_link_libraries(orderbook_cli PRIVATE orderbook)
 
 # ---------------------------------------------------------
@@ -46,6 +51,7 @@ add_executable(unit_tests
         test/test_match_engine.cpp
         test/test_orderbook.cpp
 )
+
 
 target_link_libraries(unit_tests
         PRIVATE orderbook

@@ -1,5 +1,4 @@
-#define CATCH_CONFIG_MAIN
-#include <catch2/catch_all.hpp>
+#include <catch2/catch_test_macros.hpp>
 #include "LimitOrder.hpp"
 #include <chrono>
 
@@ -14,7 +13,7 @@ TEST_CASE("LimitOrder correctly stores and returns its values", "[order]") {
 
     REQUIRE(order.getId() == id);
     REQUIRE(order.getType() == OrderType::BUY);
-    REQUIRE(order.getPrice() == Catch::Approx(99.5));
+    REQUIRE(order.getPrice() == 99.5);
     REQUIRE(order.getQuantity() == 10);
     REQUIRE(order.getTimestamp() == timestamp);
 }

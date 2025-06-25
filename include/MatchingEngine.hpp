@@ -9,14 +9,10 @@
 #include <memory>
 #include <algorithm>
 
-/// A stateless matching engine that works with any std::map<double, std::deque<…>>.
-/// The map’s comparator dictates price priority (ascending for sell, descending for buy).
 class MatchingEngine {
 public:
     template<typename MapT>
-    static std::vector<Trade> match(
-        const std::shared_ptr<IOrder>& incomingOrder,
-        MapT& opposingOrders
+    static std::vector<Trade> match(const std::shared_ptr<IOrder>& incomingOrder,MapT& opposingOrders
     ) {
         std::vector<Trade> trades;
         int remainingQty = incomingOrder->getQuantity();
