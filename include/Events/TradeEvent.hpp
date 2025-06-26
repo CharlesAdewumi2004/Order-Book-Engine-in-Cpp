@@ -4,7 +4,7 @@
 #include <chrono>
 #include <memory>
 
-class TradeEvent final :  IEvent{
+class TradeEvent final : public IEvent{
 private:
     inline static int nextId;
     int id;

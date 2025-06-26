@@ -4,7 +4,7 @@
 #include <chrono>
 #include <memory>
 
-class RemoveOrderEvent final :  IEvent{
+class RemoveOrderEvent final : public IEvent{
 private:
 	inline static int nextId;
 	int id;
@@ -14,7 +14,7 @@ private:
 
 
 public:
-	RemoveOrderEvent(std::shared_ptr<IOrder> buy, std::shared_ptr<IOrder> sell);
+	RemoveOrderEvent(std::shared_ptr<IOrder> buy);
 
 	int getId() const override;
     OrderType getType() const;

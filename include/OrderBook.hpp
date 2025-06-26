@@ -19,8 +19,7 @@ private:
     std::vector<std::shared_ptr<IOrderObserver>>                             observers;
 
     // helper to broadcast a specific event and order to all observers
-    void notifyObservers(OrderEventType event, const std::shared_ptr<IOrder>& order);
-
+    void notifyObservers(const std::shared_ptr<IEvent>& event);
 public:
     OrderBook() = default;
     ~OrderBook() = default;

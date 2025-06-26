@@ -8,5 +8,5 @@ class IEvent {
 	virtual ~IEvent() = default;
 
 	virtual int getId() const = 0;
-		virtual std::chrono::system_clock::time_point getExecutionTime() const = 0;
+	virtual std::chrono::system_clock::time_point getExecutionTime() const = 0;
 };
