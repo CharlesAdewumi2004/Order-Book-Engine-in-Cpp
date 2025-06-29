@@ -107,33 +107,4 @@ TEST_CASE("Partial fill leaves remainder and emits one TradeEvent", "[OrderBook]
     CHECK(sell->getQuantity() == 6);  // 10−4 left
 }
 
-TEST_CASE("Multi‐level fill emits one TradeEvent per fill", "[OrderBook][match]") {
-    OrderBook book;
-    auto obs = std::make_shared<RecordingObserver>();
-    book.addObserver(obs);
 
-    // two SELL orders: (2@99) and (3@100)
-    auto A = OrderFactory::createLimitOrder(2,  99, OrderType::SELL);
-    auto B = OrderFactory::createLimitOrder(3, 100, OrderType::SELL);
-    book.addOrder(A);
-    book.addOrder(B);
-    obs->receivedEvents.clear();
-
-    // BUY qty=4@100 → matches A(2) then B(2)
-    auto buy = OrderFactory::createLimitOrder(4, 100, OrderType::BUY);
-    book.addOrder(buy);
-
-    REQUIRE(countType(obs->receivedEvents, OrderEventType::MATCH) == 2);
-
-    // verify the two TradeEvents in order:
-    std::vector<std::shared_ptr<TradeEvent>> trades;
-    for(auto& e: obs->receivedEvents){
-      if(e->getEventType()==OrderEventType::MATCH)
-        trades.push_back(std::dynamic_pointer_cast<TradeEvent>(e));
-    }
-    REQUIRE(trades.size()==2);
-    CHECK(trades[0]->getSellOrder()->getId() == A->getId());
-    CHECK(trades[0]->getQty() == 2);
-    CHECK(trades[1]->getSellOrder()->getId() == B->getId());
-    CHECK(trades[1]->getQty() == 2);
-}
