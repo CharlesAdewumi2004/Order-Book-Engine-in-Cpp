@@ -1,144 +1,97 @@
-// test/test_orderbook_events.cpp
+// test/test_tradelog.cpp
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch_test_macros.hpp>
 
+#include <fstream>
+#include <cstdio>
 #include <memory>
-#include <vector>
 
-#include "OrderBook.hpp"
-#include "OrderFactory.hpp"
-#include "Interfaces/IEvent.hpp"
+#include "Observer/TradeLog.hpp"
 #include "Events/AddOrderEvent.hpp"
 #include "Events/RemoveOrderEvent.hpp"
 #include "Events/TradeEvent.hpp"
+#include "OrderFactory.hpp"
 
-struct DummyObserver : IOrderObserver {
-    std::vector<std::shared_ptr<IEvent>> events;
-    void onOrderEvent(std::shared_ptr<IEvent> ev) override {
-        events.push_back(std::move(ev));
+// Helper to read exactly one nonempty line from `fname`
+static std::string loadOneLine(const std::string& fname) {
+    std::ifstream in{fname};
+    REQUIRE(in.good());
+    std::string line;
+    while (std::getline(in, line)) {
+        if (!line.empty())
+            return line;
     }
-};
-
-static int countType(const std::vector<std::shared_ptr<IEvent>>& evs, OrderEventType want) {
-    return std::count_if(evs.begin(), evs.end(),
-        [&](auto& e){ return e->getEventType()==want; });
+    FAIL("No non-empty line in " << fname);
+    return "";
 }
 
-TEST_CASE("AddOrder emits exactly one AddOrderEvent", "[OrderBook]") {
-    OrderBook book;
-    auto obs = std::make_shared<DummyObserver>();
-    book.addObserver(obs);
+TEST_CASE("TradeLog logs ADD events as JSON", "[TradeLog][ADD]") {
+    const std::string fname = "tradelog_add.jsonl";
+    std::remove(fname.c_str());
 
-    auto o = OrderFactory::createLimitOrder(7,  42, OrderType::BUY);
-    book.addOrder(o);
+    TradeLog log{fname};
 
-    REQUIRE(obs->events.size() == 1);
-    auto ev = obs->events[0];
-    REQUIRE(ev->getEventType() == OrderEventType::ADD);
+    // build an order and wrap in AddOrderEvent
+    auto o = OrderFactory::createLimitOrder(2, 10, OrderType::BUY);
+    auto ev = std::make_shared<AddOrderEvent>(o);
+    log.onOrderEvent(ev);
 
-    // downcast and verify payload
-    auto add = std::dynamic_pointer_cast<AddOrderEvent>(ev);
-    REQUIRE(add);
-    REQUIRE(add->getOrder()->getId() == o->getId());
+    // read and verify
+    auto line = loadOneLine(fname);
+    CHECK(line.rfind("{\"type\":\"add\"", 0) == 0);
+    CHECK(line.find("\"order_id\":\"" + o->getId() + "\"") != std::string::npos);
+    CHECK(line.find("\"side\":\"BUY\"") != std::string::npos);
+    CHECK(line.find("\"price\":10")    != std::string::npos);
+    CHECK(line.find("\"quantity\":2")  != std::string::npos);
+    CHECK(line.find("\"timestamp\":")  != std::string::npos);
+
+    std::remove(fname.c_str());
 }
 
-TEST_CASE("RemoveOrder emits exactly one RemoveOrderEvent", "[OrderBook]") {
-    OrderBook book;
-    auto obs = std::make_shared<DummyObserver>();
-    book.addObserver(obs);
+TEST_CASE("TradeLog logs REMOVE events as JSON", "[TradeLog][REMOVE]") {
+    const std::string fname = "tradelog_remove.jsonl";
+    std::remove(fname.c_str());
 
-    auto o = OrderFactory::createLimitOrder(3, 99, OrderType::SELL);
-    book.addOrder(o);
-    obs->events.clear();
+    TradeLog log{fname};
 
-    book.removeOrder(o);
-    REQUIRE(obs->events.size() == 1);
-    auto ev = obs->events.front();
-    REQUIRE(ev->getEventType() == OrderEventType::REMOVE);
+    auto o = OrderFactory::createLimitOrder(5, 99, OrderType::SELL);
+    auto ev = std::make_shared<RemoveOrderEvent>(o);
+    log.onOrderEvent(ev);
 
-    auto rem = std::dynamic_pointer_cast<RemoveOrderEvent>(ev);
-    REQUIRE(rem);
-    REQUIRE(rem->getOrder()->getId() == o->getId());
+    auto line = loadOneLine(fname);
+    CHECK(line.rfind("{\"type\":\"cancel\"", 0) == 0);
+    CHECK(line.find("\"order_id\":\"" + o->getId() + "\"") != std::string::npos);
+    CHECK(line.find("\"side\":\"SELL\"") != std::string::npos);
+    CHECK(line.find("\"timestamp\":")  != std::string::npos);
+
+    std::remove(fname.c_str());
 }
 
-TEST_CASE("Single full match emits one TradeEvent", "[OrderBook][match]") {
-    OrderBook book;
-    auto obs = std::make_shared<DummyObserver>();
-    book.addObserver(obs);
+TEST_CASE("TradeLog logs MATCH events as JSON", "[TradeLog][MATCH]") {
+    const std::string fname = "tradelog_match.jsonl";
+    std::remove(fname.c_str());
 
-    // seed a resting sell
-    auto sell = OrderFactory::createLimitOrder(5, 50, OrderType::SELL);
-    book.addOrder(sell);
-    obs->events.clear();
+    TradeLog log{fname};
 
-    // incoming buy that fully matches
-    auto buy = OrderFactory::createLimitOrder(5, 50, OrderType::BUY);
-    book.addOrder(buy);
+    // create two orders at same price, then a TradeEvent of qty=3
+    auto sell = OrderFactory::createLimitOrder(3, 20, OrderType::SELL);
+    auto buy  = OrderFactory::createLimitOrder(3, 20, OrderType::BUY);
+    auto ev = std::make_shared<TradeEvent>(buy, sell, /*matchQty=*/3);
+    log.onOrderEvent(ev);
 
-    // should see: 1 ADD(buy) + 1 MATCH
-    REQUIRE(obs->events.size() == 2);
-    REQUIRE(countType(obs->events, OrderEventType::ADD)   == 1);
-    REQUIRE(countType(obs->events, OrderEventType::MATCH) == 1);
+    auto line = loadOneLine(fname);
+    CHECK(line.rfind("{\"type\":\"match\"", 0) == 0);
+    CHECK(line.find("\"buy_id\":\""  + buy ->getId() + "\"") != std::string::npos);
+    CHECK(line.find("\"sell_id\":\"" + sell->getId() + "\"") != std::string::npos);
+    CHECK(line.find("\"price\":20")  != std::string::npos);
+    CHECK(line.find("\"quantity\":3") != std::string::npos);
+    CHECK(line.find("\"timestamp\":") != std::string::npos);
 
-    auto tev = std::dynamic_pointer_cast<TradeEvent>(obs->events.back());
-    REQUIRE(tev);
-    REQUIRE(tev->getBuyOrder()->getId()  == buy->getId());
-    REQUIRE(tev->getSellOrder()->getId() == sell->getId());
-    REQUIRE(tev->getQty() == 5);
-    REQUIRE(tev->getPrice() == 50.0);
+    std::remove(fname.c_str());
 }
 
-TEST_CASE("Partial match leaves leftover and emits two TradeEvents", "[OrderBook][match]") {
-    OrderBook book;
-    auto obs = std::make_shared<DummyObserver>();
-    book.addObserver(obs);
-
-    // resting sell qty=10@100
-    auto sell = OrderFactory::createLimitOrder(10, 100, OrderType::SELL);
-    book.addOrder(sell);
-    obs->events.clear();
-
-    // incoming buy qty=4@100 => one partial trade
-    auto buy = OrderFactory::createLimitOrder(4, 100, OrderType::BUY);
-    book.addOrder(buy);
-
-    // events: ADD(buy), MATCH
-    REQUIRE(countType(obs->events, OrderEventType::ADD)   == 1);
-    REQUIRE(countType(obs->events, OrderEventType::MATCH) == 1);
-
-    // check the resting sell has been reduced
-    REQUIRE(sell->getQuantity() == 6);
-
-    // inspect TradeEvent
-    auto tev = std::dynamic_pointer_cast<TradeEvent>(obs->events.back());
-    REQUIRE(tev->getQty() == 4);
-}
-
-TEST_CASE("Multiple price‐level matches emit one TradeEvent per fill", "[OrderBook][match]") {
-    OrderBook book;
-    auto obs = std::make_shared<DummyObserver>();
-    book.addObserver(obs);
-
-    // two resting sells at 99(qty=2) and 100(qty=3)
-    auto A = OrderFactory::createLimitOrder(2, 99,  OrderType::SELL);
-    auto B = OrderFactory::createLimitOrder(3, 100, OrderType::SELL);
-    book.addOrder(A);
-    book.addOrder(B);
-    obs->events.clear();
-
-    // buy qty=4@100 => should match A(2) then B(2)
-    auto buy = OrderFactory::createLimitOrder(4, 100, OrderType::BUY);
-    book.addOrder(buy);
-
-    // expect 1 ADD + 2 MATCH events
-    REQUIRE(countType(obs->events, OrderEventType::ADD)   == 1);
-    REQUIRE(countType(obs->events, OrderEventType::MATCH) == 2);
-
-    // first trade against A, second against B
-    auto tev1 = std::dynamic_pointer_cast<TradeEvent>(obs->events[1]);
-    auto tev2 = std::dynamic_pointer_cast<TradeEvent>(obs->events[2]);
-    REQUIRE(tev1);
-    REQUIRE(tev2);
-    REQUIRE(tev1->getSellOrder()->getId() == A->getId());
-    REQUIRE(tev2->getSellOrder()->getId() == B->getId());
+TEST_CASE("TradeLog constructor throws on bad path", "[TradeLog][ERROR]") {
+    // attempt to open in non-existent directory
+    std::string bad = "/this_path_does_not_exist/log.txt";
+    REQUIRE_THROWS_AS(TradeLog{bad}, std::runtime_error);
 }

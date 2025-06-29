@@ -23,7 +23,6 @@ void TradeLog::onOrderEvent(std::shared_ptr<IEvent> ev) {
     if (!ev || !out_.is_open()) return;
 
     using namespace std::chrono;
-    // timestamp in ms since epoch
     auto tp = ev->getExecutionTime();
     auto ms = duration_cast<milliseconds>(tp.time_since_epoch()).count();
 
@@ -53,7 +52,6 @@ void TradeLog::onOrderEvent(std::shared_ptr<IEvent> ev) {
         break;
       }
       case OrderEventType::MATCH: {
-        // downcast to TradeEvent to get both sides and qty
         if (auto te = std::dynamic_pointer_cast<TradeEvent>(ev)) {
           out_
             << "{"
