@@ -3,15 +3,15 @@
 AddOrderEvent::AddOrderEvent(std::shared_ptr<IOrder> const& order)
 	: id(nextId++), order(std::move(order)), executionTime(std::chrono::system_clock::now())
 {
-	type = this->order->getOrderType();
+	eventType = OrderEventType::ADD;
 }
 
 int AddOrderEvent::getId() const {
 	return id;
 }
 
-OrderType AddOrderEvent::getType() const {
-	return type;
+OrderEventType AddOrderEvent::getEventType() const {
+	return eventType;
 }
 
 std::shared_ptr<IOrder> AddOrderEvent::getOrder() const {

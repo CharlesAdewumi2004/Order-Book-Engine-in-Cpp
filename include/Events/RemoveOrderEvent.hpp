@@ -8,16 +8,16 @@ class RemoveOrderEvent final : public IEvent{
 private:
 	inline static int nextId;
 	int id;
-    OrderType type;
+    OrderEventType eventType;
 	std::shared_ptr<IOrder> order;
 	std::chrono::system_clock::time_point executionTime;
 
 
 public:
-	RemoveOrderEvent(std::shared_ptr<IOrder> buy);
+	explicit RemoveOrderEvent(std::shared_ptr<IOrder> buy);
 
+	OrderEventType getEventType() const override;
 	int getId() const override;
-    OrderType getType() const;
-	std::shared_ptr<IOrder> getOrder() const;
+	std::shared_ptr<IOrder> getOrder() const override;
 	std::chrono::system_clock::time_point getExecutionTime() const override;
 };

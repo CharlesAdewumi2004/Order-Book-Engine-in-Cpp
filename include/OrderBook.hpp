@@ -9,7 +9,7 @@
 #include "Interfaces/IOrderObserver.hpp"
 #include "Events/TradeEvent.hpp"
 #include "MatchingEngine.hpp"
-#include "OrderEventType.hpp"
+
 
 class OrderBook {
 private:

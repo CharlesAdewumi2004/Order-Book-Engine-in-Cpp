@@ -3,15 +3,15 @@
 RemoveOrderEvent::RemoveOrderEvent(std::shared_ptr<IOrder> order)
 	: id(nextId++), order(std::move(order)), executionTime(std::chrono::system_clock::now())
 {
-	type = this->order->getOrderType();
+	eventType = OrderEventType::REMOVE;
 }
 
 int RemoveOrderEvent::getId() const {
 	return id;
 }
 
-OrderType RemoveOrderEvent::getType() const {
-	return type;
+OrderEventType RemoveOrderEvent::getEventType() const {
+  return eventType;
 }
 
 std::shared_ptr<IOrder> RemoveOrderEvent::getOrder() const {

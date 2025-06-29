@@ -27,6 +27,9 @@ add_library(orderbook STATIC
         src/OrderFactory.cpp
         src/Trade.cpp
         src/OrderBook.cpp
+        src/AddOrderEvent.cpp
+        src/RemoveOrderEvent.cpp
+        src/TradeLog.cpp
         #src/MatchingEngine.cpp
 )
 
@@ -49,7 +52,8 @@ add_executable(unit_tests
         test/test_order.cpp
         test/test_order_factory.cpp
         test/test_match_engine.cpp
-        #test/test_orderbook.cpp
+        test/test_orderbook.cpp
+        test/test_tradelog.cpp
 )
 
 

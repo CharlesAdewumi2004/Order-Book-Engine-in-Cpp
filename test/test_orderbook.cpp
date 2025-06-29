@@ -1,123 +1,139 @@
+// test/test_orderbook_events.cpp
+#define CATCH_CONFIG_MAIN
 #include <catch2/catch_test_macros.hpp>
+
 #include <memory>
 #include <vector>
-#include <utility>
+
 #include "OrderBook.hpp"
 #include "OrderFactory.hpp"
 #include "Interfaces/IEvent.hpp"
 #include "Events/AddOrderEvent.hpp"
 #include "Events/RemoveOrderEvent.hpp"
+#include "Events/TradeEvent.hpp"
 
-//––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
-// Dummy observer that records (event type, order ID) pairs
-//––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
-struct DummyObserver : IOrderObserver {
-    std::vector<std::pair<OrderEventType, std::string>> events;
-
-    void onOrderEvent(std::shared_ptr<IEvent> event) override {
-        if (!event) return;
-
-        // Check dynamic type and extract the order and event type
-        if (auto add = std::dynamic_pointer_cast<AddOrderEvent>(event)) {
-            events.emplace_back(OrderEventType::ADD, add->getOrder()->getId());
-        }
-        else if (auto rem = std::dynamic_pointer_cast<RemoveOrderEvent>(event)) {
-            events.emplace_back(OrderEventType::REMOVE, rem->getOrder()->getId());
-        }
-        else if (event->getType() == OrderEventType::MATCH) {
-            auto order = event->getOrder();
-            events.emplace_back(OrderEventType::MATCH, order->getId());
-        }
+struct RecordingObserver : IOrderObserver {
+    std::vector<std::shared_ptr<IEvent>> receivedEvents;
+    void onOrderEvent(std::shared_ptr<IEvent> ev) override {
+        receivedEvents.push_back(std::move(ev));
     }
 };
 
-//––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
-// Helper to count specific (event type, ID) pairs
-//––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
-static int countEvent(
-    const std::vector<std::pair<OrderEventType, std::string>>& ev,
-    OrderEventType want,
-    const std::string& id
-) {
-    int c = 0;
-    for (const auto& p : ev)
-        if (p.first == want && p.second == id) ++c;
-    return c;
+static int countType(const std::vector<std::shared_ptr<IEvent>>& evs, OrderEventType type) {
+    return std::count_if(evs.begin(), evs.end(),
+        [&](auto& e){ return e->getEventType()==type; });
 }
 
-//––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
-// TESTS
-//––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
-
-TEST_CASE("Adding an order triggers ADD event only", "[OrderBook]") {
+TEST_CASE("AddOrder emits one AddOrderEvent", "[OrderBook]") {
     OrderBook book;
-    auto obs = std::make_shared<DummyObserver>();
+    auto obs = std::make_shared<RecordingObserver>();
     book.addObserver(obs);
 
-    auto o = OrderFactory::createLimitOrder(5, 100, OrderType::BUY);
+    auto o = OrderFactory::createLimitOrder(7,  42, OrderType::BUY);
     book.addOrder(o);
 
-    REQUIRE(obs->events.size() == 1);
-    REQUIRE(countEvent(obs->events, OrderEventType::ADD, o->getId()) == 1);
-    REQUIRE(countEvent(obs->events, OrderEventType::REMOVE, o->getId()) == 0);
-    REQUIRE(countEvent(obs->events, OrderEventType::MATCH, o->getId()) == 0);
+    REQUIRE(obs->receivedEvents.size() == 1);
+    REQUIRE(countType(obs->receivedEvents, OrderEventType::ADD) == 1);
+    auto ev = std::dynamic_pointer_cast<AddOrderEvent>(obs->receivedEvents[0]);
+    REQUIRE(ev);
+    REQUIRE(ev->getOrder()->getId() == o->getId());
 }
 
-TEST_CASE("Removing an order triggers REMOVE event only", "[OrderBook]") {
+TEST_CASE("RemoveOrder emits one RemoveOrderEvent", "[OrderBook]") {
     OrderBook book;
-    auto obs = std::make_shared<DummyObserver>();
+    auto obs = std::make_shared<RecordingObserver>();
     book.addObserver(obs);
 
-    auto o = OrderFactory::createLimitOrder(3, 50, OrderType::SELL);
+    auto o = OrderFactory::createLimitOrder(3, 99, OrderType::SELL);
     book.addOrder(o);
-    obs->events.clear();
+    obs->receivedEvents.clear();
 
     book.removeOrder(o);
 
-    REQUIRE(obs->events.size() == 1);
-    REQUIRE(countEvent(obs->events, OrderEventType::REMOVE, o->getId()) == 1);
-    REQUIRE(countEvent(obs->events, OrderEventType::ADD, o->getId()) == 0);
-    REQUIRE(countEvent(obs->events, OrderEventType::MATCH, o->getId()) == 0);
+    REQUIRE(obs->receivedEvents.size() == 1);
+    REQUIRE(countType(obs->receivedEvents, OrderEventType::REMOVE) == 1);
+    auto ev = std::dynamic_pointer_cast<RemoveOrderEvent>(obs->receivedEvents[0]);
+    REQUIRE(ev);
+    REQUIRE(ev->getOrder()->getId() == o->getId());
 }
 
-TEST_CASE("Matching BUY against existing SELL fires MATCH events", "[OrderBook]") {
+TEST_CASE("Single fill produces exactly one TradeEvent", "[OrderBook][match]") {
     OrderBook book;
-    auto obs = std::make_shared<DummyObserver>();
+    auto obs = std::make_shared<RecordingObserver>();
     book.addObserver(obs);
 
-    auto sell = OrderFactory::createLimitOrder(3, 100, OrderType::SELL);
+    // seed a resting SELL
+    auto sell = OrderFactory::createLimitOrder(5, 50, OrderType::SELL);
     book.addOrder(sell);
-    obs->events.clear();
+    obs->receivedEvents.clear();
 
-    auto buy = OrderFactory::createLimitOrder(5, 100, OrderType::BUY);
+    // incoming BUY at same price/size → full match
+    auto buy = OrderFactory::createLimitOrder(5, 50, OrderType::BUY);
     book.addOrder(buy);
 
-    REQUIRE(obs->events.size() == 3);
-    REQUIRE(countEvent(obs->events, OrderEventType::ADD, buy->getId()) == 1);
-    REQUIRE(countEvent(obs->events, OrderEventType::MATCH, buy->getId()) == 1);
-    REQUIRE(countEvent(obs->events, OrderEventType::MATCH, sell->getId()) == 1);
+    // Expect 1 ADD + 1 MATCH
+    REQUIRE(countType(obs->receivedEvents, OrderEventType::ADD)   == 1);
+    REQUIRE(countType(obs->receivedEvents, OrderEventType::MATCH) == 1);
+
+    auto te = std::dynamic_pointer_cast<TradeEvent>(
+        *std::find_if(obs->receivedEvents.begin(), obs->receivedEvents.end(),
+            [](auto& e){ return e->getEventType()==OrderEventType::MATCH; })
+    );
+    REQUIRE(te);
+    CHECK(te->getQty() == 5);
+    CHECK(te->getPrice() == 50.0);
+    CHECK(te->getBuyOrder()->getOrderType()  == OrderType::BUY);
+    CHECK(te->getSellOrder()->getOrderType() == OrderType::SELL);
 }
 
-TEST_CASE("Multiple partial matches across price levels", "[OrderBook]") {
+TEST_CASE("Partial fill leaves remainder and emits one TradeEvent", "[OrderBook][match]") {
     OrderBook book;
-    auto obs = std::make_shared<DummyObserver>();
+    auto obs = std::make_shared<RecordingObserver>();
     book.addObserver(obs);
 
-    auto A = OrderFactory::createLimitOrder(2, 99, OrderType::SELL);
-    auto B = OrderFactory::createLimitOrder(3, 100, OrderType::SELL);
-    book.addOrder(A);
-    book.addOrder(B);
-    obs->events.clear();
+    // resting SELL qty=10
+    auto sell = OrderFactory::createLimitOrder(10, 100, OrderType::SELL);
+    book.addOrder(sell);
+    obs->receivedEvents.clear();
 
+    // incoming BUY qty=4 → partial fill
     auto buy = OrderFactory::createLimitOrder(4, 100, OrderType::BUY);
     book.addOrder(buy);
 
-    int mBuy = countEvent(obs->events, OrderEventType::MATCH, buy->getId());
-    int mA = countEvent(obs->events, OrderEventType::MATCH, A->getId());
-    int mB = countEvent(obs->events, OrderEventType::MATCH, B->getId());
+    REQUIRE(countType(obs->receivedEvents, OrderEventType::MATCH) == 1);
+    auto te = std::dynamic_pointer_cast<TradeEvent>(obs->receivedEvents.back());
+    REQUIRE(te);
+    CHECK(te->getQty() == 4);
+    CHECK(sell->getQuantity() == 6);  // 10−4 left
+}
 
-    REQUIRE(obs->events[0].first == OrderEventType::ADD);
-    REQUIRE(mBuy == 2);
-    REQUIRE(mA == 1);
-    REQUIRE(mB == 1);
+TEST_CASE("Multi‐level fill emits one TradeEvent per fill", "[OrderBook][match]") {
+    OrderBook book;
+    auto obs = std::make_shared<RecordingObserver>();
+    book.addObserver(obs);
+
+    // two SELL orders: (2@99) and (3@100)
+    auto A = OrderFactory::createLimitOrder(2,  99, OrderType::SELL);
+    auto B = OrderFactory::createLimitOrder(3, 100, OrderType::SELL);
+    book.addOrder(A);
+    book.addOrder(B);
+    obs->receivedEvents.clear();
+
+    // BUY qty=4@100 → matches A(2) then B(2)
+    auto buy = OrderFactory::createLimitOrder(4, 100, OrderType::BUY);
+    book.addOrder(buy);
+
+    REQUIRE(countType(obs->receivedEvents, OrderEventType::MATCH) == 2);
+
+    // verify the two TradeEvents in order:
+    std::vector<std::shared_ptr<TradeEvent>> trades;
+    for(auto& e: obs->receivedEvents){
+      if(e->getEventType()==OrderEventType::MATCH)
+        trades.push_back(std::dynamic_pointer_cast<TradeEvent>(e));
+    }
+    REQUIRE(trades.size()==2);
+    CHECK(trades[0]->getSellOrder()->getId() == A->getId());
+    CHECK(trades[0]->getQty() == 2);
+    CHECK(trades[1]->getSellOrder()->getId() == B->getId());
+    CHECK(trades[1]->getQty() == 2);
 }
