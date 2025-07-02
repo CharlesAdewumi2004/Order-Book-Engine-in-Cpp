@@ -3,7 +3,6 @@
 #include "Events/TradeEvent.hpp"
 #include "Events/RemoveOrderEvent.hpp"
 
-// ——— Observer Hooks ——————————————————————————————————————————————
 
 void OrderBook::addObserver(const std::shared_ptr<IOrderObserver>& observer) {
     observers.push_back(observer);
@@ -22,10 +21,9 @@ void OrderBook::notifyObservers(const std::shared_ptr<IEvent>& event) {
     }
 }
 
-// ——— Adding and Removing Orders ——————————————————————————————————
+
 
 void OrderBook::addOrder(const std::shared_ptr<IOrder>& order) {
-    // 1) Insert into the correct side
     if (order->getOrderType() == OrderType::BUY) {
         buyOrders[order->getPrice()].push_back(order);
     } else {
@@ -38,7 +36,6 @@ void OrderBook::addOrder(const std::shared_ptr<IOrder>& order) {
 }
 
 void OrderBook::removeOrder(const std::shared_ptr<IOrder>& order) {
-    // Branch on side because map types differ
     if (order->getOrderType() == OrderType::BUY) {
         auto it = buyOrders.find(order->getPrice());
         if (it != buyOrders.end()) {
@@ -77,4 +74,6 @@ void OrderBook::matchingEngine(const std::shared_ptr<IOrder>& incomingOrder) {
         }
     }
 }
+std::map<double, std::deque<std::shared_ptr<IOrder>>> OrderBook::getSellOrders() const{return sellOrders;}
+std::map<double, std::deque<std::shared_ptr<IOrder>>, std::greater<>> OrderBook::getBuyOrders() const{return buyOrders;}
 

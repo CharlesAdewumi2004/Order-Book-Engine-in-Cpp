@@ -24,14 +24,14 @@ public:
     OrderBook() = default;
     ~OrderBook() = default;
 
-    // Observer management
     void addObserver   (const std::shared_ptr<IOrderObserver>& observer);
     void removeObserver(const std::shared_ptr<IOrderObserver>& observer);
 
-    // Core operations
     void addOrder   (const std::shared_ptr<IOrder>& order);
     void removeOrder(const std::shared_ptr<IOrder>& order);
 
-    // Runs matching for a just‐added order against the opposite book
     void matchingEngine(const std::shared_ptr<IOrder>& incomingOrder);
+
+    std::map<double, std::deque<std::shared_ptr<IOrder>>> getSellOrders() const;
+    std::map<double, std::deque<std::shared_ptr<IOrder>>, std::greater<>> getBuyOrders() const;
 };

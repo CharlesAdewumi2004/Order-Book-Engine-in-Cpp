@@ -4,7 +4,6 @@
 #include "Interfaces//IOrder.hpp"
 #include "Events//TradeEvent.hpp"
 #include <map>
-#include <deque>
 #include <vector>
 #include <memory>
 #include <algorithm>
@@ -12,8 +11,7 @@
 class MatchingEngine {
 public:
     template<typename MapT>
-    static std::vector<TradeEvent> match(const std::shared_ptr<IOrder>& incomingOrder,MapT& opposingOrders
-    ) {
+    static std::vector<TradeEvent> match(const std::shared_ptr<IOrder>& incomingOrder,MapT& opposingOrders) {
         std::vector<TradeEvent> trades;
         int remainingQty = incomingOrder->getQuantity();
 

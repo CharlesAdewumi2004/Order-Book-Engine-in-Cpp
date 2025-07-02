@@ -13,10 +13,12 @@ TradeLog::TradeLog(const std::string& fileName)
     if (!out_) {
         throw std::runtime_error("TradeLog: cannot open " + fileName);
     }
+
 }
 
 TradeLog::~TradeLog() {
-    if (out_.is_open()) out_.close();
+ 	std::ofstream("trades.jsonl", std::ios::trunc).close();
+
 }
 
 void TradeLog::onOrderEvent(std::shared_ptr<IEvent> ev) {
