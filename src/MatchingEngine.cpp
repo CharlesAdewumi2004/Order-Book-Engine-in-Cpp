@@ -1,16 +1,53 @@
-#include "MatchingEngine.h"
+#include "MatchingEngine.hpp"
 
 std::vector<TradeEvent> MatchingEngine::match(
     const std::shared_ptr<IOrder>& incomingOrder,
     std::map<double, std::deque<std::shared_ptr<IOrder>>, std::greater<>>& buyBook,
     std::map<double, std::deque<std::shared_ptr<IOrder>>>& sellBook
 ) {
+    // 1. Perform matching
+    std::vector<TradeEvent> trades;
     if (incomingOrder->getType() == OrderType::BUY) {
-        return matchBuy(incomingOrder, sellBook);
+        trades = matchBuy(incomingOrder, sellBook);
     } else {
-        return matchSell(incomingOrder, buyBook);
+        trades = matchSell(incomingOrder, buyBook);
     }
+
+    // 2. Clean up BUY book: remove zero‐qty orders & empty price levels
+    for (auto it = buyBook.begin(); it != buyBook.end(); ) {
+        auto &queue = it->second;
+        queue.erase(
+            std::remove_if(queue.begin(), queue.end(),
+                [](auto &o){ return o->getQuantity() <= 0; }
+            ),
+            queue.end()
+        );
+        if (queue.empty()) {
+            it = buyBook.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
+    // 3. Clean up SELL book: remove zero‐qty orders & empty price levels
+    for (auto it = sellBook.begin(); it != sellBook.end(); ) {
+        auto &queue = it->second;
+        queue.erase(
+            std::remove_if(queue.begin(), queue.end(),
+                [](auto &o){ return o->getQuantity() <= 0; }
+            ),
+            queue.end()
+        );
+        if (queue.empty()) {
+            it = sellBook.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
+    return trades;
 }
+
 
 std::vector<TradeEvent> MatchingEngine::matchBuy(
     const std::shared_ptr<IOrder>& incomingOrder,

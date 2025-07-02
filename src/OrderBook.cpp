@@ -60,14 +60,14 @@ void OrderBook::removeOrder(const std::shared_ptr<IOrder>& order) {
 
 void OrderBook::matchingEngine(const std::shared_ptr<IOrder>& incomingOrder) {
     if (incomingOrder->getOrderType() == OrderType::BUY) {
-        auto trades = MatchingEngine::match(incomingOrder, sellOrders);
+        auto trades = MatchingEngine::match(incomingOrder, buyOrders, sellOrders);
         for (auto& t : trades) {
             std::shared_ptr<IEvent> event = std::make_shared<TradeEvent>(t);
             notifyObservers(event);
         }
     }
     else {
-        auto trades = MatchingEngine::match(incomingOrder, buyOrders);
+        auto trades = MatchingEngine::match(incomingOrder, buyOrders, sellOrders);
         for (auto& t : trades) {
             std::shared_ptr<IEvent> event = std::make_shared<TradeEvent>(t);
             notifyObservers(event);

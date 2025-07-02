@@ -30,7 +30,7 @@ add_library(orderbook STATIC
         src/AddOrderEvent.cpp
         src/RemoveOrderEvent.cpp
         src/TradeLog.cpp
-        #src/MatchingEngine.cpp
+        src/MatchingEngine.cpp
 )
 
 target_include_directories(orderbook PUBLIC include)
