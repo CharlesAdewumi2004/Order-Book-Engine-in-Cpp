@@ -8,7 +8,7 @@
 
 ### 1.1 `Order`
 
-Represents a single buy or sell limit order submitted by a trader.
+The Order system uses a polymorphic design: an interface (IOrder) defines the behavior expected of any order, while LimitOrder is the current concrete implementation. This structure allows for future extensibility (e.g., market orders, stop orders).
 
 **Fields:**
 - `id`: unique identifier for the order
@@ -25,18 +25,54 @@ Represents a single buy or sell limit order submitted by a trader.
 
 ### 1.2 `OrderBook`
 
-Manages all active buy and sell orders in the system.
+The OrderBook is the core component responsible for storing, organizing, and managing active buy and sell limit orders. It serves as the primary interface for all order-related operations, including addition, cancellation, and matching.
 
 **Responsibilities:**
-- Add new orders to the appropriate side of the book
-- Cancel existing orders by ID
-- Automatically invoke the matching engine after order addition
-- Provide access to current best bid/ask
-- Display the order book state for user interaction or testing
+- Store and manage live buy and sell orders
 
-**Internal Structure:**
-- `buyBook`: a `std::map<price, deque<Order>, std::greater<>>` storing buy orders in descending price order
-- `sellBook`: a `std::map<price, deque<Order>>` storing sell orders in ascending price order
+- Add new orders to the appropriate book (buyBook or sellBook)
+
+- Cancel existing orders by price and order pointer
+
+- Automatically invoke the MatchingEngine upon new order submission
+
+- Notify registered observers (e.g., TradeLog) on state-changing events
+
+- Expose accessor methods to view the current state of the order book (e.g., for CLI display or querying)
+
+**Design Notes:**
+
+- The order book maintains two price levels:
+
+  - buyBook: A std::map<double, std::deque<std::shared_ptr<IOrder>>, std::greater<>>
+
+    - Sorted in descending price order (highest bid first)
+
+  - sellBook: A std::map<double, std::deque<std::shared_ptr<IOrder>>>
+
+    - Sorted in ascending price order (lowest ask first)
+
+- Each price level maps to a deque of orders to enforce time priority (FIFO at each price)
+
+- When an order is added:
+
+  - It is pushed into the appropriate deque under its price
+
+  - A corresponding AddOrderEvent is generated and broadcast to observers
+
+  - The MatchingEngine is invoked to attempt any possible trade(s)
+
+- When an order is cancelled:
+
+  - The specific shared_ptr<IOrder> is removed from its deque
+
+  - Empty deques are pruned from the map
+
+  - A RemoveOrderEvent is dispatched to observers
+
+- Observers are subscribed via the IOrderObserver interface
+
+- Events (IEvent) include AddOrderEvent, RemoveOrderEvent, and TradeEvent, depending on the operation performed
 
 Orders at each price level are stored in a `deque` to preserve insertion order (for timestamp priority).
 
@@ -44,23 +80,69 @@ Orders at each price level are stored in a `deque` to preserve insertion order (
 
 ### 1.3 `MatchingEngine`
 
-Encapsulates the logic for matching incoming orders with existing ones in the order book using price-time priority.
+MatchingEngine encapsulates the logic for matching incoming orders with existing ones in the OrderBook using price-time priority. It is a stateless utility class that returns a list of executed trades and modifies order books by reference.
 
 **Responsibilities:**
-- Match a new buy order against the lowest available sell orders (ask ≤ bid)
-- Match a new sell order against the highest available buy orders (bid ≥ ask)
-- Execute full or partial trades as needed
-- Reduce or remove matched orders from the book
-- Return executed trades for optional logging
+
+- Compare a new buy order with the lowest-priced sell orders (where ask ≤ bid)
+
+- Compare a new sell order with the highest-priced buy orders (where bid ≥ ask)
+
+- Execute full or partial matches based on available quantities
+
+- Remove fully filled orders and clean up empty price levels
+
+ -Return a list of TradeEvent objects for downstream processing (e.g., logging)
+
 
 **Design Notes:**
-- Matching is automatically triggered by `OrderBook::addOrder()`
-- Matching logic is isolated for clarity and future extensibility
-- Partial fills are supported: an order may result in multiple smaller trades
+- MatchingEngine::match() is a static function taking in:
+
+- An incomingOrder
+
+- References to buyBook and sellBook
+
+- Matching is triggered from OrderBook::addOrder()
+
+- Partial fills are supported: a single incoming order may match against multiple opposing orders
+
+- After each match:
+
+  - reduceQuantity() is called on both orders
+
+  - Fully filled orders are removed from their respective price levels
+
+  - Empty price levels are cleaned up from the order book
+
+- Matching results are returned as a list of TradeEvent instances to be passed to observers like TradeLog
 
 --- 
 
-### 1.4 `TradeLog`
+### 1.4 `Event`
+
+`Event` system models discrete, state-changing operations occurring within the order book. These are used to communicate important actions to observers such as the TradeLog.
+
+- Types of Events:
+
+  - `AddOrderEvent`: Represents the addition of a new order to the book.
+
+  - `RemoveOrderEvent`: Represents the cancellation or complete fulfillment of an order.
+
+  - `TradeEvent`: Represents a successful match between a buy and a sell order.
+
+**Design Notes:**
+
+- All event types inherit from a common IEvent interface.
+
+- Each event captures relevant information such as involved order(s), quantities, and timestamps.
+
+- Events are passed to all registered observers via the observer pattern.
+
+- The Event system decouples core logic from logging and external systems, improving modularity.
+
+---
+
+### 1.5 `TradeLog`
 
 `TradeLog` serves as a persistent, append-only record of all operations performed on the order book — including order additions, cancellations, and matches.
 
@@ -69,163 +151,109 @@ Encapsulates the logic for matching incoming orders with existing ones in the or
     - `add` → when a new order is submitted
     - `cancel` → when an order is removed
     - `match` → when a trade is executed
-- Append each event to a log file in real time
-- Provide access to the in-memory log for inspection or analysis
-- Optionally expose a pointer or mechanism to mark replay progress
+- Serialize each event into a structured format and append to a log file in real time
+- Maintain a real-time, file-backed audit trail for debugging, recovery, and analytics
 
 **Format:**
-- Entries are saved in a structured, machine-readable format (e.g., JSON Lines or CSV)
+- Entries are saved in a structured, machine-readable format such as JSON Lines (JSONL)
 - Example (JSONL):
   ```json
-  {"type": "add", "order_id": 101, "side": "BUY", "price": 100, "quantity": 5, "timestamp": ...}
-  {"type": "match", "buy_id": 101, "sell_id": 102, "price": 100, "quantity": 3, "timestamp": ...}
-
-
----
-
-### ✅ 1.5 `OrderBookSerializer` 
-
-`OrderBookSerializer` (also known as the Snapshot Manager) is responsible for capturing the complete state of the system at specific points in time.
-
-**Responsibilities:**
-- Serialize the entire state of the `OrderBook` to a persistent file (e.g., JSON)
-- Optionally serialize a pointer or snapshot of the `TradeLog` state
-- Save system state on explicit command (e.g., via CLI)
-- Support optional automatic snapshotting after every 10 operations
-- Restore the system from a previous snapshot + log if needed
+    {"type": "add", "order_id": "A101", "side": "BUY", "price": 100, "quantity": 5, "timestamp": "2025-07-03T15:45:00Z"}
+    {"type": "match", "buy_id": "A101", "sell_id": "B102", "price": 100, "quantity": 3, "timestamp": "2025-07-03T15:45:01Z"}
+    {"type": "cancel", "order_id": "A103", "side": "SELL", "price": 105, "quantity": 2, "timestamp": "2025-07-03T15:45:02Z"}
 
 **Design Notes:**
-- The serializer operates independently of `OrderBook` and `TradeLog` logic
-- Snapshot format is distinct from the append-only log — it reflects the in-memory state at a point in time
-- Enables recovery via snapshot + replay model: load snapshot, then replay any remaining `TradeLog` entries
 
-**Persistence Strategy:**
-- Append-only event log (`TradeLog`) for fine-grained replayability
-- Periodic or user-triggered snapshot (`OrderBookSerializer`) for fast startup and recovery
+- Operates via the Observer pattern, listening to IEvent notifications from the OrderBook
+
+- Uses RAII and std::ofstream to ensure safe and consistent file access
+
+- Ensures append-only writes for traceability and simplicity
+
 
 ---
-## 2. Flow of Operations
+
+
+## ## 2. Flow of Operations
+
+---
 
 ### 2.1 Submitting a New Order
 
-1. A user issues a command to place a new buy or sell order.
-2. The order is validated and converted into an internal format.
-3. It is added to the appropriate side of the order book based on its type (buy/sell).
-4. The system immediately checks for available opposing orders that can fulfill it.
+1. A user issues a command via the CLI to place a new buy or sell order.
+2. The `OrderFactory` constructs a `LimitOrder` implementing `IOrder`, assigning a unique ID and timestamp.
+3. The new order is added to the correct side of the `OrderBook` (buy or sell map).
+4. An `AddOrderEvent` is created and dispatched to all observers (e.g., `TradeLog`).
+5. The system immediately invokes the `MatchingEngine` to attempt matching the new order.
 
 ---
 
 ### 2.2 Matching Orders
 
-5. Matching is performed automatically when a new order is added.
-6. The system compares the new order against existing orders on the opposite side of the book.
-7. If price and quantity conditions are met:
-    - Trades are executed
-    - The order may be partially or fully filled
-    - The resting order(s) may be removed or updated
+6. The `MatchingEngine` compares the new incoming order against resting orders on the opposite side of the book.
+7. If the incoming order satisfies price-time priority conditions:
+    - One or more trades (`TradeEvent`) are generated and executed.
+    - Matched quantities are subtracted from both sides.
+    - Any order with `quantity == 0` is removed from the book.
+    - Empty price levels are also cleaned up.
+8. Each match results in a `TradeEvent`, which is propagated to all observers (e.g., logged by `TradeLog`).
 
 ---
 
 ### 2.3 Recording Events
 
-8. Each state-changing operation — order placement, cancellation, or match — is logged.
-9. A structured log entry is appended to a persistent event log for traceability and recovery.
+9. Every event that modifies the state of the `OrderBook` — such as:
+    - **AddOrderEvent** (on order submission),
+    - **RemoveOrderEvent** (on cancel or full match),
+    - **TradeEvent** (on partial or full match),
+      — is passed to the `TradeLog`, which appends it to a persistent file (e.g., JSON Lines format).
 
 ---
 
-### 2.4 Saving a Snapshot
+### 2.4 Querying the Book
 
-10. The system may save a full snapshot of its state either:
-    - Manually (via user command)
-    - Automatically, after a fixed number of operations
-11. The snapshot contains the current state of the order book and a reference point in the event log.
+10. Users can query the system via CLI at any time to view the current order book state.
+11. The `OrderBook` exposes getters for buy/sell sides, sorted by price, to support real-time display or testing.
 
 ---
 
-### 2.5 Querying the Book
+### 2.5 Canceling Orders
 
-12. Users may request to view the order book at any time.
-13. The system responds with the current buy and sell levels, optionally sorted and summarized.
-
----
-
-### 2.6 Canceling Orders
-
-14. A user may cancel a previously placed order using its unique identifier.
-15. If the order is still active, it is removed from the book and the cancellation is logged.
+12. A user may issue a cancel command via CLI, supplying the order ID.
+13. The `OrderBook` searches for the order in the buy/sell maps and removes it if found.
+14. A `RemoveOrderEvent` is dispatched to all observers, and the cancellation is logged.
 
 ---
 
-### 2.7 Exiting and Recovery
+### 2.6 System Exit
 
-16. On system shutdown, a final snapshot may be written to disk.
-17. Upon restarting:
-    - The system restores from the most recent snapshot
-    - It replays any remaining operations from the event log to reach the latest state
+15. On exit, no snapshot is saved.
+16. The system can be restarted fresh — current design does not support recovery from persistent state.
 
----
 
-### 2.8 State Diagram
+## 3. Persistence Model
 
-![State Diagram](uml/state%20diagram.png)
-
----
-
-# 3. Persistence Model
-
-This section describes how the system ensures data durability, recoverability, and fault tolerance using a dual-layered persistence strategy: an append-only event log and periodic snapshots.
+This section describes how the system ensures data durability and traceability using an append-only event log model.
 
 ### 3.1 Overview
 
-The system persists state in two complementary ways:
-- **TradeLog**: A real-time, append-only log of all events (add, match, cancel) for auditability and replay.
-- **OrderBookSerializer**: A snapshotting component that saves the complete in-memory state of the system periodically or on demand.
+The system uses a single persistence mechanism:
+- **TradeLog**: A real-time, append-only log of all events (`AddOrderEvent`, `RemoveOrderEvent`, `TradeEvent`) for auditability, traceability, and potential replay.
 
-Together, they enable fast recovery after shutdown or crash, without requiring a full replay of the entire history.
+This model is simple, robust, and suitable for environments that do not require snapshot-based recovery.
 
 ---
 
 ### 3.2 Trade Log (Event Journal)
 
-- Every state-changing event (order added, matched, canceled) is immediately written to the TradeLog.
-- The log is stored in a structured, human-readable format such as JSON Lines (JSONL) or CSV.
-- This log allows the system to reconstruct every operation in sequence, providing full replayability.
-
----
-
-### 3.3 Snapshots (OrderBookSerializer)
-
-- Snapshots are created manually (via CLI) or automatically (after every N operations, e.g., every 10).
-- A snapshot captures:
-    - The full state of the OrderBook (active buy and sell orders)
-    - A reference to the TradeLog's position at the time of snapshot (e.g., op count or file offset)
-
-Snapshots offer a fast-loading restore point, so the system doesn't need to replay the entire event log from the beginning.
-
----
-
-### 3.4 Recovery Workflow
-
-On restart:
-1. The system loads the most recent snapshot of the OrderBook.
-2. It then replays all events in the TradeLog that occurred *after* the snapshot point.
-3. This ensures full state reconstruction up to the most recent operation.
-
-This model is inspired by event-sourced and journaling systems used in production databases and trading engines.
-
----
-
-### 3.5 Benefits
-
-| Feature                | TradeLog                | Snapshot                  |
-|------------------------|-------------------------|---------------------------|
-| **Granularity**        | Fine-grained (1 event)  | Coarse (full state)       |
-| **Speed of Load**      | Slow                    | Fast                      |
-| **Disk Usage**         | Linear growth           | Constant size (or rotated)|
-| **Recovery**           | Replay from snapshot    | Load snapshot + replay log|
-
-By combining both mechanisms, the system balances performance, reliability, and traceability.
-
+- Every state-changing event (order added, matched, canceled) is immediately passed to the `TradeLog`.
+- The `TradeLog` serializes these events into a persistent file (e.g., `log.jsonl`).
+- The format is machine-readable (JSON Lines), allowing the log to be consumed by analytics tools or replay engines.
+- Example entries:
+  ```json
+  {"type": "add", "order_id": "123", "side": "BUY", "price": 100, "quantity": 5, "timestamp": ...}
+  {"type": "match", "buy_id": "123", "sell_id": "124", "price": 100, "quantity": 3, "timestamp": ...}
+  {"type": "cancel", "order_id": "125", "timestamp": ...}
 
 ## 4. Design Principles Applied
 
