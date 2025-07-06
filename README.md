@@ -5,30 +5,30 @@ This project models a realistic trading system with support for order submission
 
 ---
 
-## 🚀 Features
+## Features
 
-- ⚙️ **Modular Architecture** – Clean separation of concerns across components (`OrderBook`, `MatchingEngine`, `TradeLog`, etc.)
-- 📈 **Matching Engine** – Implements price-time priority with partial fill support
-- 🧠 **Order Event System** – Uses polymorphic `IEvent` interface to capture order additions, removals, and matches
-- 🧾 **Trade Logging** – Persist all order events to JSONL format with timestamps for auditability
-- 👀 **Observer Pattern** – Attach logging or analytics via a simple `IOrderObserver` interface
-- 🧪 **Catch2 Unit Tests** – Every component is fully covered by unit and integration tests
-- 💡 **Clean CMake Build** – Cross-platform build system using modern CMake (FetchContent for dependencies)
-- 🔁 **CI/CD via GitHub Actions** – Ensures correctness on every push or PR
+- **Modular Architecture** – Clean separation of concerns across components (`OrderBook`, `MatchingEngine`, `TradeLog`, etc.)
+- **Matching Engine** – Implements price-time priority with partial fill support
+- **Order Event System** – Uses polymorphic `IEvent` interface to capture order additions, removals, and matches
+- **Trade Logging** – Persist all order events to JSONL format with timestamps for auditability
+- **Observer Pattern** – Attach logging or analytics via a simple `IOrderObserver` interface
+- **Catch2 Unit Tests** – Every component is fully covered by unit and integration tests
+- **Clean CMake Build** – Cross-platform build system using modern CMake (FetchContent for dependencies)
+- **CI/CD via GitHub Actions** – Ensures correctness on every push or PR
 
 ---
 
-## 📚 Documentation
+##  Documentation
 
-### ✅ [Requirements Document](docs/requirements.md)
+### [Requirements Document](docs/requirements.md)
 Outlines all functional and non-functional requirements including use case diagrams.
 
-### 🧩 [Design Document](docs/design.md)
+### [Design Document](docs/design.md)
 Explains all classes and subsystems (`Order`, `OrderBook`, `MatchingEngine`, `TradeLog`, `OrderFactory`, etc.), persistence model, architecture patterns, and trade-offs.
 
 ---
 
-## 🔧 Components Overview
+## Components Overview
 
 | Component      | Role                                                        |
 |----------------|-------------------------------------------------------------|
@@ -42,7 +42,7 @@ Explains all classes and subsystems (`Order`, `OrderBook`, `MatchingEngine`, `Tr
 
 ---
 
-## 🧪 Testing
+## Testing
 
 This project uses **Catch2** for testing.  
 You can run the tests with:
