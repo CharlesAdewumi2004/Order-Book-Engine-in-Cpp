@@ -1,15 +1,13 @@
-// src/TradeLog.cpp
 #include "Observer/TradeLog.hpp"
 #include "Interfaces/IEvent.hpp"
 #include "Events/AddOrderEvent.hpp"
-#include "Events/RemoveOrderEvent.hpp"
 #include "Events/TradeEvent.hpp"
 #include <chrono>
 #include <iomanip>
 
-TradeLog::TradeLog(const std::string& fileName)
-  : out_(fileName, std::ios::app)
+TradeLog::TradeLog(const std::string& fileName) : out_(fileName)
 {
+
     if (!out_) {
         throw std::runtime_error("TradeLog: cannot open " + fileName);
     }
